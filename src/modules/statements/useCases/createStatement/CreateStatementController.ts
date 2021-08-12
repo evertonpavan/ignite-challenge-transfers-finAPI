@@ -13,7 +13,7 @@ export class CreateStatementController {
   async execute(request: Request, response: Response) {
     const { id: user_id } = request.user;
     const { amount, description } = request.body;
-    const { received_user_id } = request.params;
+    const { receiver_user_id } = request.params;
 
     const splittedPath = request.originalUrl.split('/')
     let type = splittedPath[splittedPath.length - 1] as OperationType;
@@ -28,9 +28,11 @@ export class CreateStatementController {
       type,
       amount,
       description,
-      received_user_id
+      receiver_user_id
     });
 
+    
+ 
     return response.status(201).json(statement);
   }
 }

@@ -13,12 +13,44 @@ describe("Create Statement Controller", () => {
         connection = await createConnection();
         await connection.runMigrations();
 
-        const id = uuidV4();
-        const passsword = await hash('thebest', 8);
+        const id_user1 = uuidV4();
+        const passsword_user1 = await hash('thebest', 8);
+
+        const id_user2 = uuidV4();
+        const passsword_user2 = await hash('portugal', 8);
+
+        const id_user3 = uuidV4();
+        const passsword_user3 = await hash('brazil', 8);
+
+        const id_user4 = uuidV4();
+        const passsword_user4 = await hash('psg', 8);
 
         await connection.query(
-            `INSERT INTO users (id, name, email, password, created_at, updated_at)
-            VALUES ('${id}', 'Lionel Messi', 'messi@messi.com', '${passsword}', now(), now())`
+            `
+            INSERT INTO users (id, name, email, password, created_at, updated_at)
+            VALUES ('${id_user1}', 'Lionel Messi', 'messi@messi.com', '${passsword_user1}', now(), now())
+            `
+        );
+
+        await connection.query(
+            `
+            INSERT INTO USERS(id, name, email, password, created_at, updated_at) 
+            values('${id_user2}', 'Cristiano Ronaldo', 'ronaldo@cr7.com', '${passsword_user2}', 'now', 'now')
+            `
+        );
+
+        await connection.query(
+            `
+            INSERT INTO USERS(id, name, email, password, created_at, updated_at) 
+            values('${id_user3}', 'Neymar Jr', 'neymar@jr.com', '${passsword_user3}', 'now', 'now')
+            `
+        );
+
+        await connection.query(
+            `
+            INSERT INTO USERS(id, name, email, password, created_at, updated_at) 
+            values('${id_user4}', 'Kylian Mbappé', 'mbappe@france.com', '${passsword_user4}', 'now', 'now')
+            `
         );
     });
 
@@ -29,14 +61,14 @@ describe("Create Statement Controller", () => {
 
     it("should be able to create a deposit", async () => {
 
-        const user = await request(app)
+        const authResponse = await request(app)
             .post("/api/v1/sessions")
             .send({
                 email: "messi@messi.com",
                 password: "thebest"
             })
 
-        const { token } = user.body;
+        const { token } = authResponse.body;
 
         const response = await request(app)
             .post("/api/v1/statements/deposit")
@@ -60,14 +92,14 @@ describe("Create Statement Controller", () => {
 
     it("should be able to create a withdraw", async () => {
 
-        const user = await request(app)
+        const authResponse = await request(app)
             .post("/api/v1/sessions")
             .send({
                 email: "messi@messi.com",
                 password: "thebest"
             })
 
-        const token = user.body.token;
+        const { token } = authResponse.body;
 
         const response = await request(app)
             .post("/api/v1/statements/withdraw")
@@ -91,14 +123,14 @@ describe("Create Statement Controller", () => {
 
     it("should not be able to create a withdraw with insufficient funds", async () => {
 
-        const user = await request(app)
+        const authResponse = await request(app)
             .post("/api/v1/sessions")
             .send({
                 email: "messi@messi.com",
                 password: "thebest"
             })
 
-        const token = user.body.token;
+        const { token } = authResponse.body;
 
         const response = await request(app)
             .post("/api/v1/statements/withdraw")
@@ -119,8 +151,8 @@ describe("Create Statement Controller", () => {
         const authResponse = await request(app)
             .post("/api/v1/sessions")
             .send({
-                email: "messi@messi.com",
-                password: "thebest"
+                email: "neymar@jr.com",
+                password: "brazil"
             })
 
         const { token, user } = authResponse.body;
@@ -138,6 +170,117 @@ describe("Create Statement Controller", () => {
             });
 
         expect(response.status).toBe(404);
+        expect(response.body.message).toBe("User not found");
+    })
 
+    it("should be able to create a transfer", async () => {
+
+        const authResponse = await request(app)
+            .post("/api/v1/sessions")
+            .send({
+                email: "messi@messi.com",
+                password: "thebest"
+            })
+
+        const { token } = authResponse.body;
+
+        await request(app)
+            .post("/api/v1/statements/deposit")
+            .send({
+                amount: 200,
+                description: 'income',
+            })
+            .set({
+                Authorization: `Bearer ${token}`,
+            });
+
+
+        const [receiver_user] = await connection.query(
+            `
+            SELECT id FROM USERS WHERE name = 'Cristiano Ronaldo'
+            `
+        )
+
+        const { id } = receiver_user;
+
+        const response = await request(app)
+            .post(`/api/v1/statements/transfer/${id}`)
+            .send({
+                amount: 150,
+                description: 'payment',
+            })
+            .set({
+                Authorization: `Bearer ${token}`,
+            });
+
+        expect(response.status).toBe(201);
+        expect(response.body).toHaveProperty("id");
+        expect(response.body).toHaveProperty("user_id");
+        expect(response.body).toHaveProperty("receiver_user_id");
+        expect(response.body).toHaveProperty("description", "payment");
+        expect(response.body).toHaveProperty("amount", 150);
+        expect(response.body).toHaveProperty("type", "transfer");
+        expect(response.body).toHaveProperty("created_at");
+        expect(response.body).toHaveProperty("updated_at");
+    })
+
+    it("should not be able to create a transfer with insufficient funds", async () => {
+
+        const authResponse = await request(app)
+            .post("/api/v1/sessions")
+            .send({
+                email: "messi@messi.com",
+                password: "thebest"
+            })
+
+        const { token } = authResponse.body;
+
+        const [receiver_user] = await connection.query(
+            `
+                SELECT id FROM USERS WHERE name = 'Cristiano Ronaldo'
+                `
+        )
+
+        const { id } = receiver_user;
+
+        const response = await request(app)
+            .post(`/api/v1/statements/transfer/${id}`)
+            .send({
+                amount: 8000,
+                description: 'payment',
+            })
+            .set({
+                Authorization: `Bearer ${token}`,
+            });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe("Insufficient funds");
+    })
+
+    it("should not be able to create a transfer with nonexistent receiver user", async () => {
+
+        const authResponse = await request(app)
+            .post("/api/v1/sessions")
+            .send({
+                email: "messi@messi.com",
+                password: "thebest"
+            })
+
+        const { token } = authResponse.body;
+
+        const fake_receiver_id = uuidV4();
+       
+        const response = await request(app)
+            .post(`/api/v1/statements/transfer/${fake_receiver_id}`)
+            .send({
+                amount: 50,
+                description: 'payment',
+            })
+            .set({
+                Authorization: `Bearer ${token}`,
+            });
+
+        expect(response.status).toBe(404);
+        expect(response.body.message).toBe("Receiver user not found");
     })
 });

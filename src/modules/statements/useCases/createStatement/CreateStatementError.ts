@@ -13,9 +13,9 @@ export namespace CreateStatementError {
     }
   }
 
-  export class ReceivedUserNotFound extends AppError {
+  export class ReceiverUserNotFound extends AppError {
     constructor() {
-      super('Received user not found', 404);
+      super('Receiver user not found', 404);
     }
   }
 }

@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 import { InMemoryStatementsRepository } from "@modules/statements/repositories/in-memory/InMemoryStatementsRepository";
 import { InMemoryUsersRepository } from "@modules/users/repositories/in-memory/InMemoryUsersRepository";
 import { CreateUserUseCase } from "@modules/users/useCases/createUser/CreateUserUseCase";
@@ -104,28 +106,96 @@ describe("Post statement", () => {
         ).rejects.toEqual(new CreateStatementError.InsufficientFunds());
     });
 
-    // it("Should be able to do a transfer", async () => {
-    //     const user = await createUserUseCase.execute({
-    //         name: "Ronaldo Nazário",
-    //         email: "camisa9@brazil.com",
-    //         password: "fenomeno9"
-    //     });
+    it("Should be able to do a transfer", async () => {
+        const user = await createUserUseCase.execute({
+            name: "Ronaldo Nazário",
+            email: "camisa9@brazil.com",
+            password: "fenomeno9"
+        });
 
-    //     const result = await createStatementUseCase.execute({
-    //         user_id: user.id,
-    //         amount: 300,
-    //         description: 'payment',
-    //         type: 'transfer' as OperationType,
-    //     })
+        const receiver_user = await createUserUseCase.execute({
+            name: "Rivaldo Vítor Borba Ferreira",
+            email: "rivaldo@canhoto.com",
+            password: "pentacampeao"
+        });
 
-    //     expect(result).toEqual(
-    //         expect.objectContaining({
-    //             user_id: result.user_id,
-    //             amount: result.amount,
-    //             description: result.description,
-    //             type: result.type,
-    //         })
-    //     );
-    // });
+        await createStatementUseCase.execute({
+            user_id: user.id,
+            amount: 5000,
+            description: 'income',
+            type: 'deposit' as OperationType,
+        })
 
+
+        const result = await createStatementUseCase.execute({
+            user_id: user.id,
+            receiver_user_id: receiver_user.id,
+            amount: 3000,
+            description: 'payment',
+            type: 'transfer' as OperationType,
+        })
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                user_id: result.user_id,
+                amount: result.amount,
+                description: result.description,
+                type: result.type,
+            })
+        );
+    });
+
+
+    it("Should not be able to do a transfer with insufficient fund", async () => {
+
+        const user = await createUserUseCase.execute({
+            name: "Ronaldo Nazário",
+            email: "camisa9@brazil.com",
+            password: "fenomeno9"
+        });
+
+        const receiver_user = await createUserUseCase.execute({
+            name: "Rivaldo Vítor Borba Ferreira",
+            email: "rivaldo@canhoto.com",
+            password: "pentacampeao"
+        });
+
+        await expect(
+            createStatementUseCase.execute({
+                user_id: user.id,
+                receiver_user_id: receiver_user.id,
+                amount: 3000,
+                description: 'payment',
+                type: 'transfer' as OperationType,
+            })
+        ).rejects.toEqual(new CreateStatementError.InsufficientFunds());
+    });
+
+    it("Should not be able to do a transfer for a nonexistent receiver user", async () => {
+
+        const user = await createUserUseCase.execute({
+            name: "Ronaldo Nazário",
+            email: "camisa9@brazil.com",
+            password: "fenomeno9"
+        });
+
+        await createStatementUseCase.execute({
+            user_id: user.id,
+            amount: 5000,
+            description: 'income',
+            type: 'deposit' as OperationType,
+        })
+
+        const receiver_user = uuidv4();
+        
+        await expect(
+            createStatementUseCase.execute({
+                user_id: user.id,
+                receiver_user_id: receiver_user,
+                amount: 3000,
+                description: 'payment',
+                type: 'transfer' as OperationType,
+            })
+        ).rejects.toEqual(new CreateStatementError.ReceiverUserNotFound());
+    });
 });

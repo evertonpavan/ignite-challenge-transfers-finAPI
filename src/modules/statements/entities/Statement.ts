@@ -29,11 +29,11 @@ export class Statement {
   user: User;
 
   @Column('uuid')
-  received_user_id?: string;
+  receiver_user_id?: string;
 
-  @ManyToOne(() => User, received_user => received_user.statement)
-  @JoinColumn({ name: 'received_user_id' })
-  received_user: User;
+  @ManyToOne(() => User, receiver_user => receiver_user.statement)
+  @JoinColumn({ name: 'receiver_user_id' })
+  receiver_user: User;
 
   @Column()
   description: string;

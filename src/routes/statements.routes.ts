@@ -17,6 +17,6 @@ statementRouter.post('/deposit', createStatementController.execute);
 statementRouter.post('/withdraw', createStatementController.execute);
 statementRouter.get('/:statement_id', getStatementOperationController.execute);
 
-statementRouter.post('/transfer/:received_user_id', createStatementController.execute);
+statementRouter.post('/transfer/:receiver_user_id', createStatementController.execute);
 
 export { statementRouter };

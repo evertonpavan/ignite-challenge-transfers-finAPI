@@ -7,5 +7,5 @@ Pick<
   'description' |
   'amount' |
   'type' |
-  'received_user_id'
+  'receiver_user_id'
 >
